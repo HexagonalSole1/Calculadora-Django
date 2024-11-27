@@ -145,6 +145,7 @@
             <button onclick="appendValue('.')">.</button>
             <button onclick="appendValue('/')">/</button>
             <button onclick="calculate()">=</button>
+            <button onclick="addLastResult()">MC</button>
         </div>
     </div>
 
@@ -171,6 +172,9 @@
                         document.getElementById("result").innerText = "Error: " + data.error;
                     } else {
                         document.getElementById("result").innerText = "Resultado: " + data.result;
+                        
+                        // Guardar el resultado en localStorage
+                        localStorage.setItem("lastResult", data.result);
 
                         // Mostrar tokens en tabla
                         const tokensTable = document.getElementById("tokens-table");
@@ -193,6 +197,19 @@
                         renderTree(data.tree_json);
                     }
                 });
+        }
+
+        function addLastResult() {
+            // Obtener el último resultado del localStorage
+            const lastResult = localStorage.getItem("lastResult");
+
+            // Si hay un resultado guardado, añadirlo al contenido actual
+            if (lastResult !== null) {
+                const input = document.getElementById("expression");
+                input.value += lastResult;
+            } else {
+                alert("No hay resultados almacenados.");
+            }
         }
 
         function renderTree(treeData) {
