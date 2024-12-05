@@ -81,7 +81,7 @@
         main {
             flex-grow: 1;
             padding: 20px;
-            margin-right: 320px; /* Space for calculator */
+            margin-right: 320px;
         }
 
         table {
@@ -144,23 +144,31 @@
             <button onclick="appendValue('0')">0</button>
             <button onclick="appendValue('.')">.</button>
             <button onclick="appendValue('/')">/</button>
+            <button onclick="appendValue('sqrt(')">√</button>
+            <button onclick="appendValue('^')">^</button>
+            <button onclick="appendValue('abs(')">|x|</button>
+            <button onclick="appendValue('cos(')">cos</button>
+            <button onclick="appendValue('cot(')">cot</button>
+            <button onclick="appendValue(')')">)</button>
             <button onclick="calculate()">=</button>
             <button onclick="addLastResult()">MC</button>
         </div>
     </div>
 
     <script>
-        function appendValue(value) {
-            document.getElementById("expression").value += value;
-        }
-
-        function deleteLast() {
-            const input = document.getElementById("expression");
-            input.value = input.value.slice(0, -1);
-        }
-
         function calculate() {
-            const expression = document.getElementById("expression").value;
+            const input = document.getElementById("expression");
+            let expression = input.value.trim();
+    
+            // Verificar y cerrar paréntesis si es necesario
+            const openParens = (expression.match(/\(/g) || []).length;
+            const closeParens = (expression.match(/\)/g) || []).length;
+    
+            if (openParens > closeParens) {
+                expression += ')'.repeat(openParens - closeParens);
+                input.value = expression; // Actualizar la expresión visible
+            }
+    
             fetch("/", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -172,17 +180,14 @@
                         document.getElementById("result").innerText = "Error: " + data.error;
                     } else {
                         document.getElementById("result").innerText = "Resultado: " + data.result;
-                        
-                        // Guardar el resultado en localStorage
-                        localStorage.setItem("lastResult", data.result);
-
-                        // Mostrar tokens en tabla
+    
+                        // Mostrar tokens
                         const tokensTable = document.getElementById("tokens-table");
                         tokensTable.innerHTML = "<tr><th>Tipo</th><th>Valor</th></tr>";
                         data.tokens.forEach(token => {
                             tokensTable.innerHTML += `<tr><td>${token.tipo}</td><td>${token.valor}</td></tr>`;
                         });
-
+    
                         // Mostrar estadísticas
                         const statsTable = document.getElementById("stats-table");
                         statsTable.innerHTML = `
@@ -192,76 +197,16 @@
                             <tr><td>Total de decimales:</td><td>${data.total_decimales}</td></tr>
                             <tr><td>Total de operadores:</td><td>${data.total_operadores}</td></tr>
                         `;
-
-                        // Renderizar el árbol
+    
+                        // Renderizar árbol
                         renderTree(data.tree_json);
                     }
+                })
+                .catch(err => {
+                    document.getElementById("result").innerText = "Error en el servidor: " + err.message;
                 });
         }
-
-        function addLastResult() {
-            // Obtener el último resultado del localStorage
-            const lastResult = localStorage.getItem("lastResult");
-
-            // Si hay un resultado guardado, añadirlo al contenido actual
-            if (lastResult !== null) {
-                const input = document.getElementById("expression");
-                input.value += lastResult;
-            } else {
-                alert("No hay resultados almacenados.");
-            }
-        }
-
-        function renderTree(treeData) {
-            const container = d3.select("#tree-container");
-            container.selectAll("*").remove(); // Limpia el contenedor antes de renderizar un nuevo árbol
-
-            const width = 800, height = 400;
-
-            const svg = container.append("svg")
-                .attr("width", width)
-                .attr("height", height);
-
-            const g = svg.append("g")
-                .attr("transform", "translate(40,40)");
-
-            const treeLayout = d3.tree().size([width - 80, height - 80]);
-
-            const root = d3.hierarchy(treeData);
-
-            treeLayout(root);
-
-            // Agregar enlaces (líneas entre nodos)
-            g.selectAll(".link")
-                .data(root.links())
-                .enter()
-                .append("line")
-                .attr("class", "link")
-                .attr("x1", d => d.source.x)
-                .attr("y1", d => d.source.y)
-                .attr("x2", d => d.target.x)
-                .attr("y2", d => d.target.y)
-                .attr("stroke", "white");
-
-            // Agregar nodos (círculos)
-            const node = g.selectAll(".node")
-                .data(root.descendants())
-                .enter()
-                .append("g")
-                .attr("class", "node")
-                .attr("transform", d => `translate(${d.x},${d.y})`);
-
-            node.append("circle")
-                .attr("r", 20)
-                .attr("fill", "#00ff00")
-                .attr("stroke", "white");
-
-            node.append("text")
-                .attr("dy", 5)
-                .attr("text-anchor", "middle")
-                .text(d => d.data.name)
-                .attr("fill", "#292942");
-        }
     </script>
+    
 </body>
 </html>
